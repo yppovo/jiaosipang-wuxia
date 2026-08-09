@@ -105,6 +105,15 @@ const AudioSys = (() => {
         noise(t + 0.02, 0.25, 0.14, 300);
       } catch (e) {}
     },
+    /* 敌人怒吼（进入攻击前摇时的低音提示） */
+    roar() {
+      try {
+        ensureCtx(); if (!ctx) return;
+        const t = ctx.currentTime;
+        tone(190, t, 0.22, "sawtooth", 0.07, 95);
+        tone(120, t + 0.04, 0.26, "square", 0.055, 60);
+      } catch (e) {}
+    },
     /* 胜利（五声音阶上行） */
     win() {
       try {
@@ -125,3 +134,4 @@ const AudioSys = (() => {
 })();
 
 if (typeof module !== "undefined" && module.exports) module.exports = AudioSys;
+

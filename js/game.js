@@ -19,6 +19,74 @@
     { title: "第二战 · 众贼来犯", spawns: [["bandit", 0], ["bandit", 0.9], ["elite", 1.8]] },
     { title: "第三战 · 黑风寨主", spawns: [["boss", 0], ["bandit", 2.2]] }
   ];
+  /* ---------- 敌人 AI 行为模型 ----------
+     每个敌人有一个"大脑"：由 状态机 + 性格参数 驱动。
+     状态：idle(闲逛) / seek(追击) / attack(攻击前摇) / retreat(后撤) / stun(受击硬直)
+     性格参数：
+       aggro        索敌距离（多远的敌人会开始追你）
+       attackRange  攻击距离
+       retreatRange 贴脸距离（低于此会偶尔后撤，重新找节奏）
+       retreatChance 后撤倾向（0~1，越小越头铁）
+       enrage       残血狂暴开关
+  ---------- */
+  const BRAIN = {
+    bandit: { aggro: 600, attackRange: 150, retreatRange: 70, retreatChance: 0.35, enrage: false },
+    elite:  { aggro: 700, attackRange: 160, retreatRange: 95, retreatChance: 0.2,  enrage: true },
+    boss:   { aggro: 800, attackRange: 175, retreatRange: 60, retreatChance: 0.1,  enrage: true }
+  };
+
+  function updateEnemy(e, dt) {
+    if (e.dead) return;
+    const now = performance.now() / 1000;
+    const dist = Math.abs(hero.x - e.x);
+    const dirToHero = hero.x > e.x ? 1 : -1;
+    const brain = e.brain;
+    const enraged = e.rage && e.hp < e.maxHp * 0.35;
+
+    // 硬直恢复
+    if (e.state === "stun" && now >= e.stunUntil) e.state = "seek";
+
+    if (e.state === "attack") {
+      // 攻击前摇中：站定；前摇结束若主角还在范围内则造成伤害
+      if (now >= e.strikeAt) {
+        e.state = "seek";
+        e.lastAtk = now;
+        if (dist <= brain.attackRange * 1.3 && hero.hp > 0) damageHero(e.cfg.dmg);
+      }
+    } else if (e.state === "stun") {
+      // 受击硬直，不动
+    } else if (e.state === "retreat") {
+      // 后撤拉开距离，重新找节奏
+      e.x = clamp(e.x - dirToHero * e.cfg.speed * 1.5 * dt, 70, arena.clientWidth + 160);
+      if (dist > brain.attackRange * 0.9) e.state = "seek";
+    } else if (dist > brain.aggro) {
+      // 索敌范围外：朝主角方向缓慢游荡（带随机偏移，模拟"搜索"）
+      if (e.state !== "idle") { e.state = "idle"; e.walkUntil = now + 0.8 + Math.random() * 1.4; }
+      if (now >= e.walkUntil) { e.walkDir = Math.random() < 0.5 ? -1 : 1; e.walkUntil = now + 0.8 + Math.random() * 1.4; }
+      const bias = dirToHero * 0.7 + e.walkDir * 0.3;
+      e.x = clamp(e.x + bias * e.cfg.speed * 0.45 * dt, 70, arena.clientWidth + 160);
+    } else if (dist <= brain.attackRange && now - e.lastAtk >= e.cfg.atkCd * (enraged ? 0.7 : 1)) {
+      // 攻击：进入前摇状态
+      e.state = "attack";
+      e.strikeAt = now + 0.28;
+      e.fig.classList.remove("slash-pose");
+      void e.fig.offsetWidth;
+      e.fig.classList.add("slash-pose");
+      setTimeout(() => e.fig.classList.remove("slash-pose"), 330);
+      AudioSys.roar();
+    } else if (dist < brain.retreatRange && Math.random() < brain.retreatChance * dt * 3) {
+      // 贴脸太近：偶尔后撤
+      e.state = "retreat";
+    } else {
+      // 追击
+      e.state = "seek";
+      e.x = clamp(e.x + dirToHero * e.cfg.speed * (enraged ? 1.45 : 1) * dt, 70, arena.clientWidth + 160);
+    }
+
+    e.el.style.left = e.x + "px";
+    // 狂暴视觉（残血 BOSS/恶霸：泛红 + 微光）
+    if (enraged && !e.el.classList.contains("enraged")) e.el.classList.add("enraged");
+  }
   const DIALOGS = [
     [
       { who: "旁白", text: "残阳如血，古道西风。山道旁的茶摊前，几个山贼正围着卖茶的老翁。" },
@@ -109,7 +177,15 @@
         type, cfg, el, fig: el.querySelector(".fig"),
         x: arena.clientWidth * 0.8 + Math.random() * 40,
         hp: cfg.hp, maxHp: cfg.hp,
-        lastAtk: 0, dead: false
+        lastAtk: 0, dead: false,
+        // AI 状态
+        brain: BRAIN[type],
+        state: "seek",
+        strikeAt: 0,
+        stunUntil: 0,
+        rage: BRAIN[type].enrage,
+        walkDir: 1,
+        walkUntil: 0
       };
       el.classList.add("show-hp");
       if (type === "elite") el.style.width = "min(22vh,190px)";
@@ -157,6 +233,8 @@
 
   function damageEnemy(e, dmg) {
     e.hp -= dmg;
+    // 受击硬直：打断攻击/追击，短暂停顿
+    if (e.state !== "stun") { e.state = "stun"; e.stunUntil = performance.now() / 1000 + 0.18; }
     AudioSys.hit();
     e.fig.classList.remove("hurt");
     void e.fig.offsetWidth;
@@ -331,29 +409,8 @@
         hero.el.style.left = hero.x + "px";
         hero.dir = mx;
       }
-      // 敌人 AI
-      enemies.forEach((e) => {
-        if (e.dead) return;
-        const dist = Math.abs(hero.x - e.x);
-        if (dist > 120) {
-          const dir = e.x > hero.x ? -1 : 1;
-          e.x = clamp(e.x + dir * e.cfg.speed * dt, 70, arena.clientWidth + 160);
-          e.el.style.left = e.x + "px";
-        }
-        // 攻击（带前摇：举刀 0.28s 后才造成伤害，给玩家反应时间）
-        const now = performance.now() / 1000;
-        if (dist < 150 && now - e.lastAtk > e.cfg.atkCd) {
-          e.lastAtk = now;
-          e.fig.classList.remove("slash-pose");
-          void e.fig.offsetWidth;
-          e.fig.classList.add("slash-pose");
-          setTimeout(() => e.fig.classList.remove("slash-pose"), 320);
-          const atkDmg = e.cfg.dmg;
-          setTimeout(() => {
-            if (state === "wave" && !e.dead && hero && hero.hp > 0) damageHero(atkDmg);
-          }, 280);
-        }
-      });
+      // 敌人 AI（状态机模型）
+      enemies.forEach((e) => updateEnemy(e, dt));
     }
     // 输入缓冲：冷却结束后立即挥出
     if (queuedSlash && state === "wave") {
@@ -416,6 +473,9 @@
   let dlgOnDone = null;
   document.addEventListener("DOMContentLoaded", init);
 })();
+
+
+
 
 
 

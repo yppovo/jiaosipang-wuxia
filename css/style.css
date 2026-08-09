@@ -161,6 +161,8 @@ a{ color:inherit; text-decoration:none; }
 .entity .fig.hurt{ animation:hurtFx .3s ease; }
 @keyframes hurtFx{ 0%,100%{ filter:none; } 30%{ filter:brightness(2.2) sepia(1) hue-rotate(-50deg); } }
 .entity.dead .fig{ animation:dieFx .5s ease forwards; }
+.entity.enraged .fig{ filter:saturate(1.7) brightness(1.12) drop-shadow(0 0 12px rgba(255,70,40,.6)); }
+.entity.enraged .name-tag{ color:#ffb0a0; }
 @keyframes dieFx{ to{ transform:rotate(-90deg) translateY(30px); opacity:0; } }
 
 /* 剑气弧光 */
@@ -248,5 +250,6 @@ a{ color:inherit; text-decoration:none; }
   .hud{ flex-wrap:wrap; }
   .bar{ max-width:200px; }
 }
+
 
 
