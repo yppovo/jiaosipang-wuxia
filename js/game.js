@@ -172,6 +172,8 @@
       el.innerHTML = '<div class="fig"><span class="name-tag">' + cfg.tag + '</span>' +
         '<span class="hpbar"><span class="fill"></span></span>' +
         '<span data-sprite="' + (type === "boss" ? "boss" : "bandit") + '"></span></div>';
+      // 注入敌人立绘（sprite.js 的动态注入）
+      injectSprite(el.querySelector("[data-sprite]"));
       arena.appendChild(el);
       const e = {
         type, cfg, el, fig: el.querySelector(".fig"),
@@ -473,6 +475,7 @@
   let dlgOnDone = null;
   document.addEventListener("DOMContentLoaded", init);
 })();
+
 
 
 

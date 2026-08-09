@@ -13,14 +13,15 @@ const SPRITES = {
   boss: "<svg viewBox=\"0 0 360 500\" xmlns=\"http://www.w3.org/2000/svg\">\n  <rect x=\"168\" y=\"50\" width=\"24\" height=\"120\" rx=\"12\" fill=\"#2a1a22\"/>\n  <rect x=\"200\" y=\"50\" width=\"24\" height=\"120\" rx=\"12\" fill=\"#22121a\"/>\n  <path d=\"M 132 350 L 228 350 L 244 440 L 222 452 L 180 430 L 138 452 L 116 440 Z\" fill=\"#3a2430\"/>\n  <path d=\"M 128 250 C 124 300 132 340 180 350 C 228 340 236 300 232 250 L 226 238 C 196 250 164 250 134 238 Z\" fill=\"#5a3040\"/>\n  <path d=\"M 180 258 L 128 300 L 180 350 L 232 300 Z\" fill=\"#e8d9b8\"/>\n  <rect x=\"126\" y=\"336\" width=\"108\" height=\"15\" rx=\"5\" fill=\"#a83232\"/>\n  <ellipse cx=\"180\" cy=\"180\" rx=\"56\" ry=\"62\" fill=\"#dcab7a\"/>\n  <path d=\"M 132 160 C 124 92 160 62 180 62 C 200 62 236 92 228 160 C 218 120 202 112 180 112 C 158 112 142 120 132 160 Z\" fill=\"#1c1420\"/>\n  <path d=\"M 126 100 C 112 120 108 140 118 156 C 106 140 110 118 122 102 Z\" fill=\"#2a2030\"/>\n  <path d=\"M 234 100 C 248 120 252 140 242 156 C 254 140 250 118 238 102 Z\" fill=\"#2a2030\"/>\n  <path d=\"M 148 140 Q 160 132 174 138\" stroke=\"#241a2e\" stroke-width=\"5\" fill=\"none\" stroke-linecap=\"round\"/>\n  <path d=\"M 186 138 Q 200 132 212 140\" stroke=\"#241a2e\" stroke-width=\"5\" fill=\"none\" stroke-linecap=\"round\"/>\n  <ellipse cx=\"156\" cy=\"162\" rx=\"9\" ry=\"6\" fill=\"#fff\"/>\n  <ellipse cx=\"204\" cy=\"162\" rx=\"9\" ry=\"6\" fill=\"#fff\"/>\n  <circle cx=\"157\" cy=\"163\" r=\"4.6\" fill=\"#1a0e08\"/>\n  <circle cx=\"203\" cy=\"163\" r=\"4.6\" fill=\"#1a0e08\"/>\n  <path d=\"M 164 188 Q 180 182 196 188\" stroke=\"#8a3a2e\" stroke-width=\"4\" fill=\"none\" stroke-linecap=\"round\"/>\n  <ellipse cx=\"180\" cy=\"206\" rx=\"34\" ry=\"18\" fill=\"#1c1420\" opacity=\".85\"/>\n  <rect x=\"128\" y=\"340\" width=\"104\" height=\"15\" rx=\"6\" fill=\"#a83232\"/>\n  <path d=\"M 254 290 C 272 330 274 380 254 416 C 240 424 226 412 226 392 L 230 334 C 234 314 244 296 254 290 Z\" fill=\"#5a3040\"/>\n  <circle cx=\"248\" cy=\"428\" r=\"11\" fill=\"#dcab7a\"/>\n  <path d=\"M 268 430 L 296 442 L 290 456 L 260 444 Z\" fill=\"#6b4a2f\"/>\n  <path d=\"M 296 442 Q 304 446 306 454\" stroke=\"#cfd6de\" stroke-width=\"6\" fill=\"none\" stroke-linecap=\"round\"/>\n</svg>",
 };
 
+function injectSprite(box) {
+  if (!box || box.dataset.injected) return;
+  const key = box.dataset.sprite || "hero";
+  if (SPRITES[key]) { box.innerHTML = SPRITES[key]; box.dataset.injected = "1"; }
+}
+
 (function () {
   function inject() {
-    document.querySelectorAll("[data-sprite]").forEach(function (box) {
-      if (!box.dataset.injected) {
-        const key = box.dataset.sprite || "hero";
-        if (SPRITES[key]) { box.innerHTML = SPRITES[key]; box.dataset.injected = "1"; }
-      }
-    });
+    document.querySelectorAll("[data-sprite]").forEach(injectSprite);
   }
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", inject);
